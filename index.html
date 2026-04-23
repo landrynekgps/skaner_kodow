@@ -51,7 +51,7 @@ header{
 
 /* ── CAMERA ── */
 .cam-section{position:relative;background:#000;flex-shrink:0;overflow:hidden}
-#video{width:100%;max-height:38vh;min-height:110px;display:block;object-fit:cover}
+#video{width:100%;max-height:22vh;min-height:80px;display:block;object-fit:cover}
 
 .scan-frame{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
@@ -209,8 +209,10 @@ header{
 .bottom-bar{
   position:fixed;bottom:0;left:0;right:0;
   background:var(--s1);border-top:1px solid var(--border);
-  padding:10px 12px;display:flex;gap:8px;
+  padding:10px 12px 8px;display:flex;flex-direction:column;gap:6px;
 }
+.bottom-bar-btns{display:flex;gap:8px;}
+.author{font-size:9px;color:var(--muted);text-align:center;letter-spacing:0.5px;padding-bottom:2px;}
 .btn-export{
   flex:1;padding:11px;background:var(--amber);border:none;
   color:#000;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
@@ -248,7 +250,8 @@ header{
 <div class="toast" id="toast"></div>
 
 <header>
-  <div class="logo">▐ SKANER KODÓW</div>
+  <img src="data:image/jpeg;base64,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" alt="P&P" style="height:26px;filter:brightness(0) invert(1);opacity:0.9;flex-shrink:0">
+  <div class="logo">SKANER KODÓW</div>
   <div class="count-pill" id="countPill">0 wpisów</div>
 </header>
 
@@ -314,9 +317,12 @@ header{
 </div>
 
 <div class="bottom-bar">
-  <button class="btn-export" onclick="downloadCSV()">💾 CSV</button>
-  <button class="btn-copy" onclick="copyTable()">📋 Kopiuj</button>
-  <button class="btn-trash" onclick="clearAll()">🗑</button>
+  <div class="bottom-bar-btns">
+    <button class="btn-export" onclick="downloadCSV()">💾 CSV</button>
+    <button class="btn-copy" onclick="copyTable()">📋 Kopiuj</button>
+    <button class="btn-trash" onclick="clearAll()">🗑</button>
+  </div>
+  <div class="author">autor: Michał Lenda</div>
 </div>
 
 <script>
