@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#f0b429">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Skaner">
+<link rel="manifest" href="manifest.json">
+<title>Skaner Kodów</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #111318;
+  --s1: #181b24;
+  --s2: #1f2330;
+  --border: #2a2f3d;
+  --text: #dde1ed;
+  --muted: #525870;
+  --amber: #f0b429;
+  --amber-bg: rgba(240,180,41,.1);
+  --amber-border: rgba(240,180,41,.3);
+  --green: #34d399;
+  --green-bg: rgba(52,211,153,.08);
+  --green-border: rgba(52,211,153,.25);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'DM Sans',sans-serif;
+  display:flex;flex-direction:column;height:100dvh;
+}
+
+/* ── HEADER ── */
+header{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  padding:11px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.logo{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--amber);letter-spacing:1px;flex:1}
+.count-pill{
+  font-family:'Space Mono',monospace;font-size:10px;font-weight:700;
+  padding:3px 9px;border-radius:20px;
+  background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);
+}
+
+/* ── CAMERA ── */
+.cam-section{position:relative;background:#000;flex-shrink:0;overflow:hidden}
+#video{width:100%;max-height:38vh;min-height:110px;display:block;object-fit:cover}
+
+.scan-frame{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:62%;max-width:260px;aspect-ratio:3.5/1;pointer-events:none;
+}
+.scan-frame::before{
+  content:'';position:absolute;inset:0;
+  border:1.5px solid var(--amber);border-radius:5px;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.5);opacity:.85;
+}
+.beam{
+  position:absolute;left:6px;right:6px;height:2px;
+  background:linear-gradient(90deg,transparent 0%,var(--amber) 50%,transparent 100%);
+  border-radius:2px;animation:beam 1.8s ease-in-out infinite alternate;
+}
+@keyframes beam{from{top:12%;opacity:1}to{top:82%;opacity:.3}}
+.scan-corners span{position:absolute;width:12px;height:12px;border-color:var(--amber);border-style:solid;opacity:.9}
+.scan-corners .tl{top:-1px;left:-1px;border-width:2px 0 0 2px;border-radius:3px 0 0 0}
+.scan-corners .tr{top:-1px;right:-1px;border-width:2px 2px 0 0;border-radius:0 3px 0 0}
+.scan-corners .bl{bottom:-1px;left:-1px;border-width:0 0 2px 2px;border-radius:0 0 0 3px}
+.scan-corners .br{bottom:-1px;right:-1px;border-width:0 2px 2px 0;border-radius:0 0 3px 0}
+
+/* cam overlay screens */
+.cam-overlay{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;
+}
+.cam-start{background:var(--s1);cursor:pointer;transition:background .15s}
+.cam-start:active{background:var(--s2)}
+.cam-start-icon{font-size:36px;opacity:.5}
+.cam-start-text{font-size:14px;font-weight:600;color:var(--text)}
+.cam-start-sub{font-size:11px;color:var(--muted)}
+
+.cam-error{background:var(--s1)}
+.cam-error-icon{font-size:32px;opacity:.7}
+.cam-error-title{font-size:14px;font-weight:700;color:var(--red)}
+.cam-error-msg{font-size:12px;color:var(--muted);line-height:1.6;max-width:320px}
+.cam-error-msg code{
+  background:var(--s2);border:1px solid var(--border);border-radius:4px;
+  padding:1px 5px;font-family:'Space Mono',monospace;font-size:10px;color:var(--text);
+}
+.cam-error-btn{
+  margin-top:4px;padding:8px 20px;background:var(--s2);
+  border:1.5px solid var(--border);color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;
+  border-radius:6px;cursor:pointer;transition:border-color .15s;
+}
+.cam-error-btn:active{border-color:var(--amber)}
+
+.cam-status-bar{
+  position:absolute;bottom:0;left:0;right:0;padding:5px 12px;
+  background:rgba(0,0,0,.6);display:flex;align-items:center;gap:7px;
+  font-size:11px;color:rgba(255,255,255,.6);
+}
+.cam-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0;
+}
+.cam-dot.off{background:var(--muted);box-shadow:none}
+.cam-dot.warn{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.cam-stop-btn{
+  margin-left:auto;background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);
+  font-family:'DM Sans',sans-serif;font-size:10px;padding:3px 8px;
+  border-radius:4px;cursor:pointer;
+}
+
+/* no BarcodeDetector */
+.no-support{
+  background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);
+  border-radius:6px;padding:8px 12px;font-size:11px;color:var(--red);line-height:1.5;margin:0 12px;
+}
+
+/* ── INPUT AREA ── */
+.input-area{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  padding:10px 12px;display:flex;flex-direction:column;gap:8px;flex-shrink:0;
+}
+.input-cell{
+  background:var(--bg);border:1.5px solid var(--border);border-radius:10px;
+  padding:8px 11px;display:flex;flex-direction:column;gap:3px;
+  transition:border-color .15s,box-shadow .15s;
+}
+.input-cell.focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(240,180,41,.12)}
+.input-cell.focus-green{border-color:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.12)}
+.input-cell.focus-warn{border-color:var(--amber);box-shadow:0 0 0 3px rgba(240,180,41,.12)}
+
+.cell-label{
+  font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--muted);font-family:'Space Mono',monospace;padding-left:2px;
+}
+.cell-input{
+  background:transparent;border:none;color:var(--text);
+  font-family:'Space Mono',monospace;font-size:16px;font-weight:700;
+  padding:4px 0;outline:none;width:100%;
+}
+.cell-input::placeholder{color:var(--muted);font-weight:400;font-size:13px}
+.cell-input.green{color:var(--green)}
+.cell-input.amber{color:var(--amber)}
+
+.btn-add{
+  padding:11px;background:var(--amber);border:none;
+  color:#000;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+  border-radius:8px;cursor:pointer;transition:opacity .15s;width:100%;
+}
+.btn-add:hover{opacity:.85}
+.btn-add:active{opacity:.65;transform:scale(.98)}
+
+.mode-hint{
+  font-size:10px;color:var(--muted);display:flex;align-items:center;
+  gap:5px;flex-wrap:wrap;
+}
+.hint-key{
+  background:var(--s2);border:1px solid var(--border);border-radius:4px;
+  padding:1px 5px;font-family:'Space Mono',monospace;font-size:9px;color:var(--text);
+}
+
+/* ── LIST ── */
+.list-wrap{
+  flex:1;overflow-y:auto;padding:10px 12px 80px;
+  display:flex;flex-direction:column;gap:4px;
+}
+.list-col-header{
+  display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:6px;
+  padding:0 6px 6px;font-size:9px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--muted);font-family:'Space Mono',monospace;
+}
+.row{
+  display:grid;grid-template-columns:22px 1fr 1fr 26px;gap:6px;
+  align-items:center;background:var(--s1);border:1px solid var(--border);
+  border-radius:8px;padding:9px 8px;animation:rowIn .18s ease;
+}
+.row.new-row{border-color:var(--green-border);background:var(--green-bg);animation:rowIn .18s ease,rowFade 1.5s ease .4s forwards}
+@keyframes rowIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes rowFade{to{border-color:var(--border);background:var(--s1)}}
+
+.row-num{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);text-align:center}
+.row-label{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-barcode{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-del{
+  width:24px;height:24px;background:transparent;border:none;
+  color:var(--muted);font-size:12px;border-radius:5px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;
+}
+.row-del:active{color:var(--red);background:var(--red-bg)}
+
+.empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:8px;padding:30px;text-align:center;
+}
+.empty-icon{font-size:34px;opacity:.2}
+.empty-text{font-size:13px;color:var(--muted);line-height:1.5}
+
+/* ── BOTTOM BAR ── */
+.bottom-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--s1);border-top:1px solid var(--border);
+  padding:10px 12px;display:flex;gap:8px;
+}
+.btn-export{
+  flex:1;padding:11px;background:var(--amber);border:none;
+  color:#000;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
+  border-radius:8px;cursor:pointer;transition:opacity .15s;
+}
+.btn-export:active{opacity:.7}
+.btn-copy{
+  padding:11px 12px;background:var(--s2);border:1.5px solid var(--border);
+  color:var(--text);font-size:13px;border-radius:8px;cursor:pointer;
+}
+.btn-copy:active{border-color:var(--amber)}
+.btn-trash{
+  padding:11px 12px;background:var(--s2);border:1.5px solid var(--border);
+  color:var(--muted);font-size:15px;border-radius:8px;cursor:pointer;
+}
+.btn-trash:active{color:var(--red);border-color:rgba(248,113,113,.3)}
+
+/* flash & toast */
+.flash{position:fixed;inset:0;z-index:200;background:rgba(52,211,153,.15);pointer-events:none;opacity:0;transition:opacity .07s}
+.flash.show{opacity:1}
+.toast{
+  position:fixed;bottom:76px;left:50%;transform:translateX(-50%);
+  background:var(--s2);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;
+  padding:8px 16px;border-radius:20px;z-index:9999;opacity:0;transition:opacity .2s;
+  pointer-events:none;white-space:nowrap;border:1px solid var(--border);
+}
+.toast.show{opacity:1}
+.toast.ok{background:var(--green);color:#000;border-color:transparent}
+.toast.err{background:var(--red);color:#fff;border-color:transparent}
+</style>
+</head>
+<body>
+
+<div class="flash" id="flash"></div>
+<div class="toast" id="toast"></div>
+
+<header>
+  <div class="logo">▐ SKANER KODÓW</div>
+  <div class="count-pill" id="countPill">0 wpisów</div>
+</header>
+
+<div class="cam-section" id="camSection">
+  <video id="video" autoplay muted playsinline></video>
+
+  <div class="scan-frame" id="scanFrame" style="display:none">
+    <div class="beam"></div>
+    <div class="scan-corners">
+      <span class="tl"></span><span class="tr"></span>
+      <span class="bl"></span><span class="br"></span>
+    </div>
+  </div>
+
+  <div class="cam-overlay cam-start" id="camStart" onclick="startCam()">
+    <div class="cam-start-icon">📷</div>
+    <div class="cam-start-text">Dotknij aby uruchomić kamerę</div>
+    <div class="cam-start-sub">Przeglądarka poprosi o dostęp</div>
+  </div>
+
+  <div class="cam-overlay cam-error" id="camError" style="display:none">
+    <div class="cam-error-icon" id="errIcon">🔒</div>
+    <div class="cam-error-title" id="errTitle">Kamera niedostępna</div>
+    <div class="cam-error-msg" id="errMsg"></div>
+    <button class="cam-error-btn" onclick="resetCamUI()">Spróbuj ponownie</button>
+  </div>
+
+  <div class="cam-status-bar" id="camStatusBar" style="display:none">
+    <div class="cam-dot off" id="camDot"></div>
+    <span id="camStatusText">Kamera aktywna</span>
+    <button class="cam-stop-btn" onclick="stopCam()">■ Stop</button>
+  </div>
+</div>
+
+<div class="input-area">
+  <div id="noSupportBanner" style="display:none" class="no-support">
+    ⚠ Przeglądarka nie obsługuje skanowania — potrzebny Chrome na Android. Wpisuj kody ręcznie.
+  </div>
+
+  <div class="input-cell" id="labelCell">
+    <span class="cell-label">Identyfikator</span>
+    <input id="labelInput" class="cell-input" type="text" placeholder="np. 2/89" autocomplete="off" spellcheck="false" inputmode="text">
+  </div>
+
+  <div class="input-cell" id="barcodeCell">
+    <span class="cell-label">Kod kreskowy</span>
+    <input id="barcodeInput" class="cell-input" type="text" placeholder="zeskanuj lub wpisz ręcznie" autocomplete="off" spellcheck="false" inputmode="text">
+  </div>
+
+  <button class="btn-add" onclick="addRow()">Dodaj wpis</button>
+
+  <div class="mode-hint">
+    <span class="hint-key">Enter</span> w identyfikatorze → przejdź niżej &nbsp;·&nbsp;
+    <span class="hint-key">Enter</span> w kodzie → dodaj
+  </div>
+</div>
+
+<div class="list-wrap" id="listWrap">
+  <div class="list-col-header">
+    <span>#</span><span>Identyfikator</span><span>Kod kreskowy</span><span></span>
+  </div>
+  <div id="rowsContainer"></div>
+</div>
+
+<div class="bottom-bar">
+  <button class="btn-export" onclick="downloadCSV()">💾 CSV</button>
+  <button class="btn-copy" onclick="copyTable()">📋 Kopiuj</button>
+  <button class="btn-trash" onclick="clearAll()">🗑</button>
+</div>
+
+<script>
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(r => console.log('SW zarejestrowany:', r.scope))
+      .catch(e => console.warn('SW błąd:', e));
+  });
+}
+
+// ── STAN ──
+let data = JSON.parse(localStorage.getItem('scanData5') || '[]');
+let camRunning = false;
+let detector = null;
+let animFrame = null;
+let cooldown = false;
+let lastCode = '';
+let lastCodeTS = 0;
+
+const video = document.getElementById('video');
+const labelInput = document.getElementById('labelInput');
+const barcodeInput = document.getElementById('barcodeInput');
+const labelCell = document.getElementById('labelCell');
+const barcodeCell = document.getElementById('barcodeCell');
+
+labelInput.addEventListener('focus', () => {
+  labelCell.classList.add('focus');
+  labelCell.classList.remove('focus-green', 'focus-warn');
+});
+labelInput.addEventListener('blur', () => labelCell.classList.remove('focus'));
+barcodeInput.addEventListener('focus', () => {
+  barcodeCell.classList.add('focus');
+  barcodeCell.classList.remove('focus-green', 'focus-warn');
+});
+barcodeInput.addEventListener('blur', () => {
+  barcodeCell.classList.remove('focus');
+  if (!barcodeInput.value.trim()) {
+    barcodeCell.classList.remove('focus-green', 'focus-warn');
+    barcodeInput.classList.remove('green', 'amber');
+  }
+});
+barcodeInput.addEventListener('input', updateBarcodeCell);
+
+function updateBarcodeCell() {
+  const v = barcodeInput.value.trim();
+  barcodeInput.classList.remove('green', 'amber');
+  barcodeCell.classList.remove('focus-green', 'focus-warn');
+  if (v && !barcodeInput.classList.contains('green')) {
+    barcodeInput.classList.add('amber');
+    barcodeCell.classList.add('focus-warn');
+  }
+}
+
+labelInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); barcodeInput.focus(); }
+});
+barcodeInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addRow(); }
+});
+
+// ── KAMERA ──
+async function startCam() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showCamError('🔒', 'Kamera niedostępna',
+      'Twoja przeglądarka nie obsługuje dostępu do kamery.<br><br>Użyj <strong>Chrome na Android</strong>.');
+    return;
+  }
+
+  const attempts = [
+    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+    { video: { facingMode: 'environment' } },
+    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } } },
+    { video: true }
+  ];
+
+  let lastErr = null;
+  for (let i = 0; i < attempts.length; i++) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia(attempts[i]);
+      video.srcObject = stream;
+      camRunning = true;
+      document.getElementById('camStart').style.display = 'none';
+      document.getElementById('camError').style.display = 'none';
+      document.getElementById('scanFrame').style.display = 'block';
+      document.getElementById('camStatusBar').style.display = 'flex';
+      initDetector();
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') break;
+    }
+  }
+  showDetailedError(lastErr);
+}
+
+function showDetailedError(err) {
+  if (!err) { showCamError('❌', 'Nieznany błąd', 'Nie udało się uruchomić kamery.'); return; }
+  const msgs = {
+    'NotAllowedError': { icon:'🚫', title:'Brak zgody na kamerę', msg:'Odmówiłeś dostępu.<br><br>Kliknij ikonę 🔒 w pasku adresu → Kamera → Zezwól → odśwież.' },
+    'PermissionDeniedError': { icon:'🚫', title:'Brak zgody na kamerę', msg:'Dostęp do kamery zablokowany. Wejdź w ustawienia przeglądarki i odblokuj.' },
+    'NotFoundError': { icon:'📷', title:'Nie znaleziono kamery', msg:'Żadna kamera nie została wykryta.' },
+    'NotReadableError': { icon:'⚠', title:'Kamera zajęta', msg:'Kamera jest używana przez inną aplikację. Zamknij inne aplikacje i spróbuj ponownie.' },
+    'OverconstrainedError': { icon:'⚙', title:'Niezgodna konfiguracja', msg:'Telefon nie obsługuje żądanych ustawień kamery.' },
+    'AbortError': { icon:'⚠', title:'Przerwano', msg:'Żądanie kamery zostało przerwane. Spróbuj ponownie.' },
+    'SecurityError': { icon:'🔒', title:'Zablokowane', msg:'Upewnij się że strona otwarta jest przez <code>https://</code>.' }
+  };
+  const known = msgs[err.name];
+  if (known) showCamError(known.icon, known.title, known.msg);
+  else showCamError('❌', 'Błąd: ' + err.name, 'Szczegóły: <code>' + esc(err.message || '') + '</code>');
+}
+
+function showCamError(icon, title, htmlMsg) {
+  document.getElementById('camStart').style.display = 'none';
+  document.getElementById('errIcon').textContent = icon;
+  document.getElementById('errTitle').textContent = title;
+  document.getElementById('errMsg').innerHTML = htmlMsg;
+  document.getElementById('camError').style.display = 'flex';
+  document.getElementById('scanFrame').style.display = 'none';
+  document.getElementById('camStatusBar').style.display = 'none';
+}
+
+function resetCamUI() {
+  document.getElementById('camError').style.display = 'none';
+  document.getElementById('camStart').style.display = 'flex';
+}
+
+function stopCam() {
+  if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+  video.srcObject = null;
+  camRunning = false;
+  if (animFrame) cancelAnimationFrame(animFrame);
+  document.getElementById('camStart').style.display = 'flex';
+  document.getElementById('camError').style.display = 'none';
+  document.getElementById('scanFrame').style.display = 'none';
+  document.getElementById('camStatusBar').style.display = 'none';
+}
+
+function initDetector() {
+  if (!('BarcodeDetector' in window)) {
+    document.getElementById('noSupportBanner').style.display = 'block';
+    document.getElementById('camDot').classList.add('off');
+    document.getElementById('camStatusText').textContent = 'Kamera OK (brak skanera w przeglądarce)';
+    return;
+  }
+  BarcodeDetector.getSupportedFormats().then(formats => {
+    detector = new BarcodeDetector({ formats });
+    document.getElementById('camDot').classList.remove('off');
+    document.getElementById('camStatusText').textContent = 'Skanuje... (' + formats.length + ' formatów)';
+    scanLoop();
+  }).catch(() => {
+    document.getElementById('noSupportBanner').style.display = 'block';
+    document.getElementById('camDot').classList.add('warn');
+    document.getElementById('camStatusText').textContent = 'Błąd inicjalizacji skanera';
+  });
+}
+
+function scanLoop() {
+  if (!camRunning) return;
+  if (video.readyState === video.HAVE_ENOUGH_DATA && detector) {
+    detector.detect(video).then(results => {
+      if (results.length > 0) {
+        const code = results[0].rawValue;
+        const now = Date.now();
+        if (code !== lastCode || now - lastCodeTS > 2500) {
+          lastCode = code;
+          lastCodeTS = now;
+          onScanned(code);
+        }
+      }
+    }).catch(() => {});
+  }
+  animFrame = requestAnimationFrame(scanLoop);
+}
+
+function onScanned(code) {
+  if (cooldown) return;
+  cooldown = true;
+  setTimeout(() => cooldown = false, 1200);
+  flash(); vibrate();
+  barcodeInput.value = code;
+  barcodeInput.classList.remove('amber');
+  barcodeInput.classList.add('green');
+  barcodeCell.classList.remove('focus-warn');
+  barcodeCell.classList.add('focus-green');
+  if (labelInput.value.trim()) {
+    setTimeout(() => addRow(), 150);
+  } else {
+    labelInput.focus();
+    showToast('Wpisz identyfikator i naciśnij Enter', '');
+  }
+}
+
+// ── DANE ──
+function addRow() {
+  const label = labelInput.value.trim();
+  const barcode = barcodeInput.value.trim();
+  if (!label) { showToast('Wpisz identyfikator', 'err'); labelInput.focus(); return; }
+  if (!barcode) { showToast('Brak kodu kreskowego', 'err'); barcodeInput.focus(); return; }
+  data.unshift({ id: Date.now(), label, barcode });
+  save(); render();
+  labelInput.value = '';
+  barcodeInput.value = '';
+  barcodeInput.classList.remove('green', 'amber');
+  barcodeCell.classList.remove('focus-green', 'focus-warn');
+  labelInput.focus();
+}
+
+function deleteRow(id) { data = data.filter(d => d.id !== id); save(); render(); }
+
+function clearAll() {
+  if (!data.length) return;
+  if (confirm('Usunąć wszystkie ' + data.length + ' wpisów?')) { data = []; save(); render(); }
+}
+
+function render() {
+  const container = document.getElementById('rowsContainer');
+  const n = data.length;
+  document.getElementById('countPill').textContent =
+    n === 0 ? '0 wpisów' : n === 1 ? '1 wpis' : n < 5 ? n + ' wpisy' : n + ' wpisów';
+  if (!n) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>' +
+      '<div class="empty-text">Brak wpisów — skieruj kamerę na kod,<br>wpisz identyfikator i naciśnij Enter</div></div>';
+    return;
+  }
+  container.innerHTML = data.map((d, i) =>
+    '<div class="row ' + (i === 0 ? 'new-row' : '') + '">' +
+    '<span class="row-num">' + (n - i) + '</span>' +
+    '<span class="row-label" title="' + esc(d.label) + '">' + esc(d.label) + '</span>' +
+    '<span class="row-barcode" title="' + esc(d.barcode) + '">' + esc(d.barcode) + '</span>' +
+    '<button class="row-del" onclick="deleteRow(' + d.id + ')">✕</button>' +
+    '</div>'
+  ).join('');
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function save() { localStorage.setItem('scanData5', JSON.stringify(data)); }
+
+// ── EKSPORT ──
+function downloadCSV() {
+  if (!data.length) { showToast('Brak danych', 'err'); return; }
+  const rows = [...data].reverse();
+  const csv = '\uFEFF' + ['Identyfikator,Kod kreskowy',
+    ...rows.map(d => csvCell(d.label) + ',' + csvCell(d.barcode))
+  ].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'kody.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Pobrano ' + data.length + ' wpisów', 'ok');
+}
+
+function csvCell(v) {
+  return (v.includes(',') || v.includes('"')) ? '"' + v.replace(/"/g,'""') + '"' : v;
+}
+
+function copyTable() {
+  if (!data.length) { showToast('Brak danych', 'err'); return; }
+  const text = [...data].reverse().map(d => d.label + '\t' + d.barcode).join('\n');
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('Skopiowano ' + data.length + ' wpisów', 'ok'))
+    .catch(() => showToast('Błąd kopiowania', 'err'));
+}
+
+// ── NARZĘDZIA ──
+function flash() {
+  const f = document.getElementById('flash');
+  f.classList.add('show');
+  setTimeout(() => f.classList.remove('show'), 140);
+}
+function vibrate() { if (navigator.vibrate) navigator.vibrate(70); }
+
+let toastTimer;
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+render();
+labelInput.focus();
+</script>
+</body>
+</html>
