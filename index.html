@@ -562,8 +562,8 @@ function save() { localStorage.setItem('scanData5', JSON.stringify(data)); }
 function downloadCSV() {
   if (!data.length) { showToast('Brak danych', 'err'); return; }
   const rows = [...data].reverse();
-  const csv = '\uFEFF' + ['Identyfikator,Kod kreskowy',
-    ...rows.map(d => csvCell(d.label) + ',' + csvCell(d.barcode))
+  const csv = '\uFEFF' + ['Identyfikator;Kod kreskowy',
+    ...rows.map(d => csvCell(d.label) + ';' + csvCell(d.barcode))
   ].join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
